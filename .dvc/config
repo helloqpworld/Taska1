@@ -1,0 +1,8 @@
+[core]
+    remote = myminio
+['remote "dvc-storage-task1"']
+    url = s3://dvc-storage
+    endpointurl = http://localhost:9000
+['remote "myminio"']
+    url = s3://dvc-storage-taska1-try1
+    endpointurl = http://localhost:9000
