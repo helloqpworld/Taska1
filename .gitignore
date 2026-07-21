@@ -1,3 +1,5 @@
 .venv
-data/
+data/*
+!data/**/.gitignore
+!data/**/*.dvc
 .dvc/cache/
