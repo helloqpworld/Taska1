@@ -5,11 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.4.6",
-    "pandas>=3.0.5",
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.1",
+    "mlflow>=2.14.0",
+    "numpy<2",
+    "pandas<3",
     "plotly>=6.9.0",
-    "pyarrow>=25.0.0",
+    "protobuf==4.25.3",
+    "pyarrow<16",
     "scikit-learn>=1.9.0",
+    "setuptools<70",
     "xgboost>=3.2.0",
 ]
 
