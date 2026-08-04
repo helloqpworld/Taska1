@@ -1,6 +1,10 @@
 import os
 import sys
 
+import dotenv
+
+dotenv.load_dotenv()
+
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 import mlflow
@@ -37,7 +41,7 @@ def train(df: pd.DataFrame) -> pd.DataFrame:
     y_train_log = np.log1p(y_train_clean)
 
     lgb_model = lgb.LGBMRegressor(
-        n_estimators=1, learning_rate=0.05, random_state=42, n_jobs=-1, verbose=-1
+        n_estimators=15, learning_rate=0.1, random_state=42, n_jobs=-1, verbose=-1
     )
 
     with mlflow.start_run(run_name="lgb_with_minio_storage") as run:
