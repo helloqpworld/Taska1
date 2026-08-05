@@ -1,5 +1,5 @@
 # Classic ML & MLOps Infrastructure Project
-
+!!! НУЖДАЕТСЯ В ДОРАБОТКЕ !!!
 Проект сквозного MLOps-контура: от обучения моделей до production-ready сервиса предсказаний.
 
 ## 🏗 Стек технологий
