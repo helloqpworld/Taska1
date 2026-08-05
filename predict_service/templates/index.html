@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ML Model Predictions</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
+        .upload-box { border: 2px dashed #ccc; padding: 30px; display: inline-block; border-radius: 10px; }
+        input[type="submit"] { margin-top: 15px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Загрузите файл для получения предсказаний</h2>
+    <div class="upload-box">
+        <form action="/predict" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv, .parquet" required><br>
+            <input type="submit" value="Загрузить и предсказать">
+        </form>
+    </div>
+</body>
+</html>

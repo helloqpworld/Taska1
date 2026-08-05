@@ -1,6 +1,10 @@
+.env
 .venv
 .vscode
 data/*
 !data/**/.gitignore
 !data/**/*.dvc
 .dvc/cache/
+__pycache__/
+*.py[cod]
+mlruns/
