@@ -6,9 +6,9 @@ services:
     image: postgres:13-alpine
     container_name: pg_db
     environment:
-      POSTGRES_USER: dev_user
-      POSTGRES_PASSWORD: dev_user_pass_123
-      POSTGRES_DB: dev_db_2
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
     networks:
       - backend_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev_user -d dev_db_2"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -28,8 +28,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin333
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - /home/alex/Desktop/Reps/taska1/minio_data:/data
       - /home/alex/Desktop/Reps/taska1/minio.license:/minio.license:ro
@@ -51,24 +51,17 @@ services:
       minio:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin333
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        mc alias set myminio http://minio:9000 admin admin333
-        #mc admin user svcacct add --access-key San_ML_scientist --secret-key San123 myminio admin
-        mc mb myminio/taxi-backet-26/artifacts --ignore-existing
-        # Создаем локального сервисного персонального пользователя (Service Account)
-        # В отличие от старого подхода, mc admin user svcacct add привязывается к политике бакета
-        mc admin user add myminio San_ML_scientist San123123
-
-        # Пишем строгую политику: разрешить доступ ТОЛЬКО к бакету taxi-mlflow-bucket
-        echo '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::taxi-backet-26","arn:aws:s3:::taxi-backet-26/*"]}]}' > /tmp/mlflow_policy.json
+        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+        mc mb myminio/${MINIO_BUCKET_NAME}/artifacts --ignore-existing
+        mc admin user add myminio ${MINIO_USER_NAME} ${NINIO_USER_PASS}
+        echo '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::${MINIO_BUCKET_NAME}","arn:aws:s3:::${MINIO_BUCKET_NAME}/*"]}]}' > /tmp/mlflow_policy.json
         mc admin policy create myminio mlflow_restricted_policy /tmp/mlflow_policy.json
-
-        # Назначаем эту политику нашему пользователю
-        mc admin policy attach myminio mlflow_restricted_policy --user=San_ML_scientist
+        mc admin policy attach myminio mlflow_restricted_policy --user=${MINIO_USER_NAME}
         exit 0;
     networks:
       - backend_network
@@ -85,16 +78,16 @@ services:
     ports:
       - "5050:5000"
     environment:
-      AWS_ACCESS_KEY_ID: San_ML_scientist
-      AWS_SECRET_ACCESS_KEY: San123123
+      AWS_ACCESS_KEY_ID: ${MINIO_USER_NAME}
+      AWS_SECRET_ACCESS_KEY: ${NINIO_USER_PASS}
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       MLFLOW_S3_IGNORE_TLS: "True"
     command: >
       mlflow server
-      --backend-store-uri postgresql://dev_user:dev_user_pass_123@db:5432/dev_db_2
+      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       --host 0.0.0.0
       --serve-artifacts
-      --artifacts-destination s3://taxi-backet-26/artifacts
+      --artifacts-destination s3://${MINIO_BUCKET_NAME}/artifacts
     networks:
       - backend_network
     healthcheck:
