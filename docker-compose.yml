@@ -13,6 +13,8 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dev_user -d dev_db_2"]
       interval: 5s
@@ -34,6 +36,8 @@ services:
       #- ../minio_data:/data
       #- ../minio.license:/minio.license:ro
     command: server /data --console-address ':9001' --address ':9000'
+    networks:
+      - backend_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 15s
@@ -66,6 +70,8 @@ services:
         # Назначаем эту политику нашему пользователю
         mc admin policy attach myminio mlflow_restricted_policy --user=San_ML_scientist
         exit 0;
+    networks:
+      - backend_network
 
   mlflow_server:
     build: .
@@ -89,6 +95,8 @@ services:
       --host 0.0.0.0
       --serve-artifacts
       --artifacts-destination s3://taxi-backet-26/artifacts
+    networks:
+      - backend_network
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
       #test: ["CMD", "curl", "-f", "http://localhost:5000/"]
@@ -98,3 +106,7 @@ services:
 
 volumes:
   pg_data:
+
+networks:
+  backend_network:
+    driver: bridge
