@@ -1,0 +1,15 @@
+services:
+  fastapi_predict:
+    build:
+      context: .
+    container_name: fastapi_predict
+    ports:
+      - "8000:8000"
+    #extra_hosts:
+      #- "host.docker.internal:host-gateway"
+    #network_mode: "host"
+    environment:
+      - MLFLOW_TRACKING_URI=http://${MAIN_SERVER_IP}:5050
+      - MLFLOW_S3_ENDPOINT_URL=http://${MAIN_SERVER_IP}:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_PASS}
