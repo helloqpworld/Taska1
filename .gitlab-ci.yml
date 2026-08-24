@@ -1,0 +1,38 @@
+stages:
+  - test
+  - build
+
+variables:
+  # Используем встроенные переменные GitLab для тегирования образа
+  IMAGE_NAME: "$CI_REGISTRY/alex/classicmlplusmlopsbasics/predict_service"
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+
+# Стейдж тестирования
+run_tests:
+  stage: test
+  image: ghcr.io/astral-sh/uv:latest # Используем официальный быстрый образ uv
+  script:
+    - uv sync --frozen # Восстанавливаем окружение из uv.lock
+    - uv run pytest predict_service/tests/ # Запускаем тесты
+
+# Стейдж сборки и отправки в GitLab Container Registry
+build_and_push:
+  stage: build
+  image: docker:24.0.7-cli # Клиент Docker, версия должна совпадать или быть близкой к раннеру
+  services:
+    - docker:24.0.7-dind
+  variables:
+    # Указываем Docker-клиенту общаться со сквозным сокетом хоста
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    # Логинимся во встроенный GitLab Registry под системным пользователем джобы
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+  script:
+    # Собираем образ из контекста папки predict_service
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
+    # Пушим обе версии (с тегом коммита и latest) в ваш локальный Registry (порт 5050)
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker push $IMAGE_NAME:latest
+  only:
+    - main # или master, в зависимости от имени вашей ветки
