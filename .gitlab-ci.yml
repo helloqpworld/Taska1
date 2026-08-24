@@ -22,6 +22,11 @@ build_and_push:
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
+    # 1. Создаем папку конфигурации докера для текущего пользователя джобы
+    - mkdir -p ~/.docker
+    # 2. Записываем правило доверия к локальному HTTP-реестру напрямую в конфиг клиента
+    - echo "{\"insecure-registries\":[\"$CI_REGISTRY\"]}" > ~/.docker/config.json
+    # 3. Авторизуемся (теперь клиент знает, что этот эндпоинт работает без SSL)
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
