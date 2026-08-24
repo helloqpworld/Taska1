@@ -7,12 +7,10 @@ variables:
   IMAGE_NAME: "$CI_REGISTRY/alex/classicmlplusmlopsbasics/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
 
-# Стейдж тестирования
+# Стейдж тестирования (Используем полноценный образ с Python и установленным uv)
 run_tests:
   stage: test
-  image:
-    name: ghcr.io/astral-sh/uv:latest # Используем официальный быстрый образ uv
-    entrypoint: [""] # Переопределяем пустой entrypoint, чтобы раннер мог использовать bash/sh
+  image: ghcr.io/astral-sh/uv:python3.11-alpine # Полноценный легковесный образ с оболочкой sh
   script:
     - uv sync --frozen # Восстанавливаем окружение из uv.lock
     - uv run pytest predict_service/tests/ # Запускаем тесты
