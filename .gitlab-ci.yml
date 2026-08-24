@@ -19,17 +19,25 @@ run_tests:
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
+  # Запускаем фоновый сервис Docker-демона прямо внутри джобы
+  services:
+    - name: docker:24.0.7-dind
+      # Принудительно заставляем этот изолированный демон работать с вашим реестром по HTTP
+      command: ["--insecure-registry", "10.57.198.153:5050"]
   variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
+    # Указываем клиенту подключаться к внутреннему демону джобы по TLS
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
   before_script:
-    # 1. Создаем папку конфигурации докера для текущего пользователя джобы
-    - mkdir -p ~/.docker
-    # 2. Записываем правило доверия к локальному HTTP-реестру напрямую в конфиг клиента
-    - echo "{\"insecure-registries\":[\"$CI_REGISTRY\"]}" > ~/.docker/config.json
-    # 3. Авторизуемся (теперь клиент знает, что этот эндпоинт работает без SSL)
+    # Ждем пару секунд, пока внутренний демон полностью поднимется
+    - sleep 5
+    # Логинимся
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
+    # Собираем образ
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
+    # Пушим обе версии
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
   only:
