@@ -19,13 +19,10 @@ run_tests:
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
-  services:
-    - docker:24.0.7-dind
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
-    DOCKER_TLS_CERTDIR: ""
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login htp://$CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
     - docker push $IMAGE_NAME:$IMAGE_TAG
