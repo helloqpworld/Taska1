@@ -12,7 +12,8 @@ run_tests:
   image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim
   script:
     - uv sync --frozen # Синхронизируем зависимости из вашего uv.lock
-    - uv run pytest predict_service/tests/ # Запускаем тесты
+    # Явно передаем PYTHONPATH, чтобы python видел папку predict_service как корневую для импортов приложения
+    - PYTHONPATH=predict_service uv run pytest predict_service/tests/
 
 # Стейдж сборки и отправки в GitLab Container Registry
 build_and_push:
