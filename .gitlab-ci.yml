@@ -3,41 +3,32 @@ stages:
   - build
 
 variables:
-  IMAGE_NAME: "$CI_REGISTRY/$CI_PROJECT_PATH/predict_service"
+  # Полное имя образа для сохранения в вашем реестре
+  IMAGE_NAME: "10.57.198.153:5050/$CI_PROJECT_PATH/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
 
-# Стейдж тестирования (Используем готовый официальный образ с glibc)
+# Стейдж тестирования (Работает стабильно)
 run_tests:
   stage: test
   image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim
   script:
-    - uv sync --frozen # Синхронизируем зависимости из вашего uv.lock
-    # Явно передаем PYTHONPATH, чтобы python видел папку predict_service как корневую для импортов приложения
+    - uv sync --frozen
     - PYTHONPATH=predict_service uv run pytest predict_service/tests/
 
-# Стейдж сборки и отправки в GitLab Container Registry
+# Стейдж сборки (Возвращаемся к надежному сокету хоста)
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
-  # Запускаем фоновый сервис Docker-демона прямо внутри джобы
-  services:
-    - name: docker:24.0.7-dind
-      # Принудительно заставляем этот изолированный демон работать с вашим реестром по HTTP
-      command: ["--insecure-registry", "10.57.198.153:5050"]
   variables:
-    # Указываем клиенту подключаться к внутреннему демону джобы по TLS
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "/certs/client"
+    # Общаемся напрямую с докером вашей Xubuntu
+    DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    # Ждем пару секунд, пока внутренний демон полностью поднимется
-    - sleep 5
-    # Логинимся
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    # Логинимся напрямую по IP и порту, чтобы избежать TLS-проверок на стороне клиента
+    - echo "$CI_REGISTRY_PASSWORD" | docker login 10.57.198.153:5050 -u $CI_REGISTRY_USER --password-stdin
   script:
-    # Собираем образ
+    # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
-    # Пушим обе версии
+    # Пушим готовый сервис инференса
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
   only:
