@@ -10,7 +10,7 @@ variables:
 # Стейдж тестирования (Используем полноценный образ с Python и установленным uv)
 run_tests:
   stage: test
-  image: ghcr.io/astral-sh/uv:python3.11-alpine # Полноценный легковесный образ с оболочкой sh
+  image: ghcr.io/astral-sh/uv:python3.11-debian # Полноценный легковесный образ с оболочкой sh
   script:
     - uv sync --frozen # Восстанавливаем окружение из uv.lock
     - uv run pytest predict_service/tests/ # Запускаем тесты
