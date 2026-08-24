@@ -24,13 +24,13 @@ build_and_push:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
     # Логинимся напрямую по IP и порту, чтобы избежать TLS-проверок на стороне клиента
-    - echo "$CI_REGISTRY_PASSWORD" | docker login 10.57.198.153:5050 -u $CI_REGISTRY_USER --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login gitlab:5050 -u $CI_REGISTRY_USER --password-stdin
   script:
-    # Собираем образ из контекста predict_service
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
-    # Пушим готовый сервис инференса
-    - docker push $IMAGE_NAME:$IMAGE_TAG
-    - docker push $IMAGE_NAME:latest
+    # Собираем образ, тегируя его через внутреннее имя хоста реестра
+    - docker build -t gitlab:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG -t gitlab:5050/$CI_PROJECT_PATH/predict_service:latest -f predict_service/Dockerfile predict_service/
+    # Пушим во внутреннюю сеть
+    - docker push gitlab:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG
+    - docker push gitlab:5050/$CI_PROJECT_PATH/predict_service:latest
   only:
     - main
     - dev
