@@ -15,22 +15,24 @@ run_tests:
     - uv sync --frozen
     - PYTHONPATH=predict_service uv run pytest predict_service/tests/
 
-# Стейдж сборки (Возвращаемся к надежному сокету хоста)
+# Стейдж сборки и отправки в GitLab Container Registry
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
   variables:
-    # Общаемся напрямую с докером вашей Xubuntu
     DOCKER_HOST: unix:///var/run/docker.sock
+    # Указываем докеру искать конфиг в специальной папке
+    DOCKER_CONFIG: /root/.docker
   before_script:
-    # Логинимся напрямую по IP и порту, чтобы избежать TLS-проверок на стороне клиента
-    - echo "$CI_REGISTRY_PASSWORD" | docker login gitlab:5050 -u $CI_REGISTRY_USER --password-stdin
+    # Создаем конфигурационный файл для демона хоста через переменные клиента
+    - mkdir -p /root/.docker
+    - echo '{"insecure-registries":["10.57.198.153:5050"]}' > /root/.docker/config.json
+    # Логинимся по IP-адресу
+    - echo "$CI_REGISTRY_PASSWORD" | docker login 10.57.198.153:5050 -u $CI_REGISTRY_USER --password-stdin
   script:
-    # Собираем образ, тегируя его через внутреннее имя хоста реестра
-    - docker build -t gitlab:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG -t gitlab:5050/$CI_PROJECT_PATH/predict_service:latest -f predict_service/Dockerfile predict_service/
-    # Пушим во внутреннюю сеть
-    - docker push gitlab:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG
-    - docker push gitlab:5050/$CI_PROJECT_PATH/predict_service:latest
+    - docker build -t 10.57.198.153:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG -t 10.57.198.153:5050/$CI_PROJECT_PATH/predict_service:latest -f predict_service/Dockerfile predict_service/
+    - docker push 10.57.198.153:5050/$CI_PROJECT_PATH/predict_service:$IMAGE_TAG
+    - docker push 10.57.198.153:5050/$CI_PROJECT_PATH/predict_service:latest
   only:
     - main
     - dev
