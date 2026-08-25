@@ -7,7 +7,7 @@ variables:
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
 
-# Стейдж тестирования (Работает стабильно)
+# Стейдж тестирования (Работает идеально)
 run_tests:
   stage: test
   image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim
@@ -15,22 +15,16 @@ run_tests:
     - uv sync --frozen
     - PYTHONPATH=predict_service uv run pytest predict_service/tests/
 
-# Стейдж сборки (Решение со сквозным хост-интерфейсом)
+# Стейдж сборки (Чистый, без ошибок синтаксиса и логинов)
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
-  # Переключаем контейнер джобы на сетевой стек хост-машины Xubuntu
-  network_mode: host
   variables:
-    # Используем сокет хоста напрямую
     DOCKER_HOST: unix:///var/run/docker.sock
-  before_script:
-    # Логируемся в реестр. В host-сети адрес определится как локальный
-    - echo "$CI_REGISTRY_PASSWORD" | docker login 10.57.198.153:5050 -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
-    # Пушим готовый сервис инференса в реестр
+    # Пушим готовый сервис (авторизация подтянется с хоста Xubuntu)
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
   only:
