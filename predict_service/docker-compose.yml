@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://${MAIN_SERVER_IP}:5050
+      - MLFLOW_TRACKING_URI=http://${MAIN_SERVER_IP}:5060
       - MLFLOW_S3_ENDPOINT_URL=http://${MAIN_SERVER_IP}:9000
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}

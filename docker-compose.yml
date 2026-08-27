@@ -1,14 +1,13 @@
 name: taska1
 
 services:
-
   db:
     image: postgres:13-alpine
     container_name: pg_db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow_db}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +15,7 @@ services:
     networks:
       - backend_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -31,10 +30,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - /home/alex/Desktop/Reps/taska1/minio_data:/data
-      - /home/alex/Desktop/Reps/taska1/minio.license:/minio.license:ro
-      #- ../minio_data:/data
-      #- ../minio.license:/minio.license:ro
+      # DevOps-практика: используем относительный путь от корня проекта
+      - ./minio_data:/data
+      - ./minio.license:/minio.license:ro
     command: server /data --console-address ':9001' --address ':9000'
     networks:
       - backend_network
@@ -53,15 +51,18 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_USER_NAME: ${MINIO_USER_NAME}
+      NINIO_USER_PASS: ${NINIO_USER_PASS}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
-        mc mb myminio/${MINIO_BUCKET_NAME}/artifacts --ignore-existing
-        mc admin user add myminio ${MINIO_USER_NAME} ${NINIO_USER_PASS}
-        echo '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::${MINIO_BUCKET_NAME}","arn:aws:s3:::${MINIO_BUCKET_NAME}/*"]}]}' > /tmp/mlflow_policy.json
+        mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}
+        mc mb myminio/$${MINIO_BUCKET_NAME}/artifacts --ignore-existing
+        mc admin user add myminio $${MINIO_USER_NAME} $${NINIO_USER_PASS}
+        echo '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::$${MINIO_BUCKET_NAME}","arn:aws:s3:::$${MINIO_BUCKET_NAME}/*"]}]}' > /tmp/mlflow_policy.json
         mc admin policy create myminio mlflow_restricted_policy /tmp/mlflow_policy.json
-        mc admin policy attach myminio mlflow_restricted_policy --user=${MINIO_USER_NAME}
+        mc admin policy attach myminio mlflow_restricted_policy --user=$${MINIO_USER_NAME}
         exit 0;
     networks:
       - backend_network
@@ -76,7 +77,8 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - "5050:5000"
+      # Меняем внешний порт с 5050 на 5060, чтобы не конфликтовать с GitLab Registry
+      - "5060:5000"
     environment:
       AWS_ACCESS_KEY_ID: ${MINIO_USER_NAME}
       AWS_SECRET_ACCESS_KEY: ${NINIO_USER_PASS}
@@ -92,7 +94,6 @@ services:
       - backend_network
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
-      #test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
       timeout: 10s
       retries: 3
