@@ -6,5 +6,3 @@
 ['remote "myminio"']
     url = s3://dvc-storage-taska1-try1
     endpointurl = http://localhost:9000
-    access_key_id = 4hpyI2d51rdpyn8bj1ze
-    secret_access_key = Pu2mpwNNu4VWElSS6cPVDR3UdHnrwfx3lCGL2WSo
