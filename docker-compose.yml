@@ -78,7 +78,7 @@ services:
         condition: service_healthy
     ports:
       # Меняем внешний порт с 5050 на 5060, чтобы не конфликтовать с GitLab Registry
-      - "5060:5000"
+      - "5080:5000"
     environment:
       AWS_ACCESS_KEY_ID: ${MINIO_USER_NAME}
       AWS_SECRET_ACCESS_KEY: ${NINIO_USER_PASS}
