@@ -8,3 +8,7 @@ data/*
 __pycache__/
 *.py[cod]
 mlruns/
+.mlflow/
+minio.license
+minio_data/
+

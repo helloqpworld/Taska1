@@ -84,12 +84,11 @@ services:
       AWS_SECRET_ACCESS_KEY: ${NINIO_USER_PASS}
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       MLFLOW_S3_IGNORE_TLS: "True"
-    command: >
-      mlflow server
-      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      --host 0.0.0.0
-      --serve-artifacts
-      --artifacts-destination s3://${MINIO_BUCKET_NAME}/artifacts
+      # Передаем переменные внутрь контейнера для нашей CMD команды:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
     networks:
       - backend_network
     healthcheck:
