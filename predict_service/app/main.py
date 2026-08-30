@@ -32,8 +32,11 @@ async def lifespan(app: FastAPI):
         )
         print("Модель успешно загружена в память и готова к работе!")
     except Exception as e:
-        print(f"КРИТИЧЕСКАЯ ОШИБКА при загрузке модели: {e}")
-        raise e
+        # DevOps-практика: перехватываем ошибку, логируем, но НЕ тушим сервис
+        print(f"ВНИМАНИЕ: Модель '{model_name}' с алиасом '@prod' не найдена в MLflow.")
+        print(f"Детали ошибки: {e}")
+        print("Сервер FastAPI запускается в режиме ожидания модели...")
+        ml_models["predict_model"] = None
 
     yield
 
@@ -50,7 +53,6 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 async def main_page(request: Request):
-    # Универсальный синтаксис, подходящий для любых новых версий FastAPI/Starlette
     return templates.TemplateResponse(request, "index.html", {"request": request})
 
 
@@ -65,14 +67,13 @@ async def predict(file: UploadFile = File(...)):
     contents = await file.read()
 
     loaded_model = ml_models.get("predict_model")
+    # Меняем код с 500 на 503, так как это штатная ситуация временного отсутствия модели
     if not loaded_model:
         raise HTTPException(
-            status_code=500, detail="Модель не инициализирована в памяти."
+            status_code=503,
+            detail="Сервис временно недоступен: ML-модель еще не обучена или не зарегистрирована в MLflow.",
         )
 
-    # ВАЖНО: Чтение тяжелых файлов и синхронный метод .predict()
-    # мы выполняем в пуле потоков через run_in_threadpool,
-    # чтобы сервер не зависал при одновременных запросах.
     try:
         if filename_lower.endswith(".csv"):
             df = await run_in_threadpool(pd.read_csv, io.BytesIO(contents))
@@ -90,7 +91,6 @@ async def predict(file: UploadFile = File(...)):
 
     df["prediction"] = predictions
 
-    # Формируем ответ обратно в исходном формате
     if filename_lower.endswith(".csv"):
         stream = io.StringIO()
         df.to_csv(stream, index=False)
@@ -98,7 +98,6 @@ async def predict(file: UploadFile = File(...)):
         return_content = stream.getvalue()
     else:
         stream = io.BytesIO()
-        # Явно фиксируем движок pyarrow, который необходим для стабильной работы
         df.to_parquet(stream, index=False, engine="pyarrow")
         media_type = "application/octet-stream"
         return_content = stream.getvalue()
