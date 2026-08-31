@@ -3,10 +3,18 @@ services:
     build:
       context: .
     container_name: fastapi_predict
+    # УБРАЛИ network_mode: host, вернули изоляцию!
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://${MAIN_SERVER_IP}:5080
-      - MLFLOW_S3_ENDPOINT_URL=http://${MAIN_SERVER_IP}:9000
+      # Теперь внутри общей сети мы можем обращаться к MLflow по имени контейнера!
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+    networks:
+      - taska1_backend_network
+
+networks:
+  taska1_backend_network:
+    external: true # Говорим докеру использовать уже существующую сеть проекта
