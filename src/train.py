@@ -14,7 +14,9 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from sklearn.model_selection import train_test_split
 
-mlflow.set_tracking_uri("http://localhost:5050")
+
+mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5080")
+mlflow.set_tracking_uri(mlflow_uri)
 mlflow.set_experiment("taxi_duration_lightgbm")
 mlflow.lightgbm.autolog()
 
@@ -41,7 +43,7 @@ def train(df: pd.DataFrame) -> pd.DataFrame:
     y_train_log = np.log1p(y_train_clean)
 
     lgb_model = lgb.LGBMRegressor(
-        n_estimators=15, learning_rate=0.1, random_state=42, n_jobs=-1, verbose=-1
+        n_estimators=500, learning_rate=0.01, random_state=42, n_jobs=-1, verbose=-1
     )
 
     with mlflow.start_run(run_name="lgb_with_minio_storage") as run:
