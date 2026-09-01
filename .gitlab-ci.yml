@@ -3,10 +3,8 @@ stages:
   - build
 
 variables:
-  # 172.17.0.1 — это стандартный IP-адрес твоего сервера Contabo внутри мира Docker.
-  # Для докер-клиента джобы этот адрес является приватным локальным шлюзом,
-  # поэтому он гарантированно НЕ будет требовать HTTPS и SSL-сертификаты.
-  REGISTRY_GATEWAY: "172.17.0.1:5050"
+  # Используем точный IP-адрес шлюза Docker-сети из вывода docker inspect
+  REGISTRY_GATEWAY: "172.18.0.1:5050"
   IMAGE_NAME: "$REGISTRY_GATEWAY/root/taska1/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
@@ -28,12 +26,12 @@ build_and_push:
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    # Авторизуемся во внутреннем реестре через IP-шлюз Docker хоста
-    - echo "$CI_REGISTRY_PASSWORD" | docker login http://$REGISTRY_GATEWAY -u $CI_REGISTRY_USER --password-stdin
+    # Логинимся во внутренний Container Registry сервера через доверенный шлюз
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_GATEWAY -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
-    # Пушим образ прямо в локальный Container Registry сервера
+    # Пушим образ прямо во встроенный реестр GitLab
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
   tags:
