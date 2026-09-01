@@ -4,5 +4,5 @@
     url = s3://dvc-storage
     endpointurl = http://localhost:9000
 ['remote "myminio"']
-    url = s3://dvc-storage-taska1-try1
-    endpointurl = http://localhost:9000
+    url = s3://mlflow-taxi-bucket/artifacts
+    endpointurl = http://169.58.244.233:9000
