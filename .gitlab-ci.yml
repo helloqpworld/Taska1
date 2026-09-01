@@ -40,8 +40,13 @@ build_local:
 deploy_to_cluster:
   stage: deploy_k8s
   # Используем официальный образ от команды Kubernetes со встроенной утилитой kubectl
-  image: bitnami/kubectl:latest
+  image: alpine:3.18
   script:
+    # 1. Скачиваем стабильный бинарник kubectl прямо внутрь контейнера джобы
+    - apk add --no-cache curl base64
+    - curl -LO https://dl.k8s.io/release/`curl -LS https://dl.k8s.io/release/stable.txt`/bin/linux/amd64/kubectl
+    - chmod +x ./kubectl
+    - mv ./kubectl /usr/local/bin/kubectl
     # Декодируем строку Base64 обратно в идеальный YAML-файл прямо внутри временной папки джобы
     - echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig.yaml
     - export KUBECONFIG=./kubeconfig.yaml
