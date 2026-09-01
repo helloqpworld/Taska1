@@ -3,7 +3,11 @@ stages:
   - build
 
 variables:
-  IMAGE_NAME: "$CI_REGISTRY_IMAGE/predict_service"
+  # DevOps-практика: подставляем имя контейнера реестра из твоего docker-compose.
+  # Так как раннер использует хост-сокет, адрес localhost:5050 для него является
+  # родным, безопасным (loopback) интерфейсом, для которого Docker НИКОГДА не требует HTTPS.
+  REGISTRY_LOCAL: "localhost:5050"
+  IMAGE_NAME: "$REGISTRY_LOCAL/root/taska1/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
 
@@ -24,12 +28,8 @@ build_and_push:
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    # Профессиональный DevOps-хак: передаем флаг через конфиг сессии Docker-клиента джобы,
-    # чтобы принудительно отключить проверку TLS-сертификатов для нашего реестра
-    - mkdir -p ~/.docker
-    - echo "{\"insecure-registries\":[\"$CI_REGISTRY\"]}" > ~/.docker/config.json
-    # Теперь логинимся без указания http://, так как инсекьюр-режим уже прописан в конфиге выше
-    - echo "$CI_REGISTRY_PASSWORD" | docker login http://$CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    # Логинимся через безопасный интерфейс localhost хост-системы
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_LOCAL -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
