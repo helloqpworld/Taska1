@@ -3,11 +3,9 @@ stages:
   - build
 
 variables:
-  # DevOps-практика: подставляем имя контейнера реестра из твоего docker-compose.
-  # Так как раннер использует хост-сокет, адрес localhost:5050 для него является
-  # родным, безопасным (loopback) интерфейсом, для которого Docker НИКОГДА не требует HTTPS.
-  REGISTRY_LOCAL: "localhost:5050"
-  IMAGE_NAME: "$REGISTRY_LOCAL/root/taska1/predict_service"
+  # Наш Registry доступен раннеру по имени контейнера в одной сети Docker
+  REGISTRY_HOST: "gitlab-server-gitlab-1:5050"
+  IMAGE_NAME: "$REGISTRY_HOST/root/taska1/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
 
@@ -21,19 +19,21 @@ run_tests:
   tags:
     - docker
 
-# Стейдж сборки
+# Стейдж сборки и пуша
 build_and_push:
   stage: build
   image: docker:24.0.7-cli
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
+    # ВАЖНО: говорим докер-клиенту полностью отключить TLS/HTTPS для сборщика джобы
+    DOCKER_TLS_CERTDIR: ""
   before_script:
-    # Логинимся через безопасный интерфейс localhost хост-системы
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_LOCAL -u $CI_REGISTRY_USER --password-stdin
+    # Явно указываем http:// перед именем контейнера, чтобы уйти от HTTPS
+    - echo "$CI_REGISTRY_PASSWORD" | docker login http://$REGISTRY_HOST -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
-    # Пушим обе версии в локальный Container Registry
+    # Пушим во внутреннее имя контейнера реестра
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
   tags:
