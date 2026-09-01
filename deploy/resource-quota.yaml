@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: predict-service-quota
+  namespace: predict-service-ns # Запираем квоту в нашей песочнице
+spec:
+  hard:
+    # Зачем: суммарно все поды в этом неймспейсе не могут затребовать (request)
+    # больше 2 ядер CPU и 2 ГБ оперативной памяти
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    # Зачем: верхний жесткий потолок (limits) для всего неймспейса — 4 ядра и 4 ГБ RAM
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    # Зачем: ограничиваем максимальное число запущенных подов до 10 штук
+    pods: "10"

@@ -1,14 +1,14 @@
 stages:
   - test
   - build
+  - deploy_k8s
 
 variables:
-  # Возвращаем стандартную системную переменную GitLab Container Registry
   IMAGE_NAME: "$CI_REGISTRY_IMAGE/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
 
-# Стейдж тестирования (Работает стабильно)
+# 1. Автоматические тесты
 run_tests:
   stage: test
   image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim
@@ -18,25 +18,41 @@ run_tests:
   tags:
     - docker
 
-# Стейдж сборки и пуша через Kaniko (DevOps стандарт)
-build_and_push:
+# 2. Автоматическая сборка через Kaniko
+build_local:
   stage: build
-  # Используем официальный debug-образ Kaniko (версия debug содержит встроенный shell)
   image:
     name: gcr.io/kaniko-project/executor:v1.14.0-debug
     entrypoint: [""]
   script:
-    # 1. Создаем папку для конфигурации авторизации реестра
     - mkdir -p /kaniko/.docker
-    # 2. Генерируем системный токен авторизации для GitLab Container Registry
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(printf "%s:%s" "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    # 3. Запускаем сборку и пуш с флагом --insecure, который намертво отключает HTTPS
     - /kaniko/executor
       --context "${CI_PROJECT_DIR}/predict_service"
       --dockerfile "${CI_PROJECT_DIR}/predict_service/Dockerfile"
       --destination "$IMAGE_NAME:$IMAGE_TAG"
       --destination "$IMAGE_NAME:latest"
       --insecure
+  tags:
+    - docker
+
+# 3. АВТОМАТИЧЕСКИЙ ДЕПЛОЙ В KUBERNETES (CD)
+deploy_to_cluster:
+  stage: deploy_k8s
+  # Используем официальный образ от команды Kubernetes со встроенной утилитой kubectl
+  image: bitnami/kubectl:latest
+  script:
+    # Профессиональный шаг: указываем kubectl использовать скрытый файл kubeconfig из секретов
+    - export KUBECONFIG=$KUBECONFIG
+    - echo "Авторизация в кластере KinD прошла успешно! Начинаем деплой манифестов..."
+    # Последовательно раскатываем всю нашу архитектуру одной командой
+    - kubectl apply -f deploy/rbac.yaml
+    - kubectl apply -f deploy/resource-quota.yaml
+    - kubectl apply -f deploy/limit-range.yaml
+    - kubectl apply -f deploy/deployment.yaml
+    - kubectl apply -f deploy/service-ingress.yaml
+    # DevOps-практика: дожидаемся, пока поды пройдут инициализацию и запустятся
+    - kubectl rollout status deployment/fastapi-predict-deployment -n predict-service-ns --timeout=60s
   tags:
     - docker
   only:

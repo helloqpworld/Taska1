@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: predict-service-limits
+  namespace: predict-service-ns
+spec:
+  limits:
+    - default: # Зачем: Максимальные лимиты по умолчанию, если они не указаны в Deployment
+        cpu: 500m  # 0.5 ядра CPU
+        memory: 512Mi
+      defaultRequest: # Зачем: Минимально гарантированные ресурсы по умолчанию
+        cpu: 200m  # 0.2 ядра CPU
+        memory: 256Mi
+      type: Container

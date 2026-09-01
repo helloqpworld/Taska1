@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-predict-deployment
+  namespace: predict-service-ns # Кладем строго в нашу песочницу
+  labels:
+    app: fastapi-predict
+spec:
+  replicas: 2 # Запустим сразу 2 копии приложения для отказоустойчивости
+  selector:
+    matchLabels:
+      app: fastapi-predict
+  template:
+    metadata:
+      labels:
+        app: fastapi-predict
+    spec:
+      serviceAccountName: predict-service-sa # Тот самый паспорт безопасности, что мы создали!
+      containers:
+        - name: predict-container
+          # Указываем путь к образу, который собрал твой Kaniko в Container Registry!
+          image: 172.18.0.1:5050/root/taska1/predict_service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          # НАШЕ ЗАДАНИЕ: Жесткие лимиты контейнера
+          resources:
+            requests:
+              # Зачем: Минимально гарантированные ресурсы, которые K8s зарезервирует на ноде под этот под
+              cpu: "300m"   # 0.3 ядра CPU
+              memory: "512Mi"
+            limits:
+              # Зачем: Максимальный потолок. Если модель попытается съесть больше 1 ГБ, 
+              # K8s защитит сервер и перезапустит контейнер (OOMKilled)
+              cpu: "1"      # 1 full CPU core
+              memory: "1Gi"
