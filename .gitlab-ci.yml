@@ -25,7 +25,7 @@ build_and_push:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
     # Логинимся во внутренний реестр с системными учетными данными джобы
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login http://$CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest -f predict_service/Dockerfile predict_service/
