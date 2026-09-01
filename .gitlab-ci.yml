@@ -40,7 +40,9 @@ build_local:
 deploy_to_cluster:
   stage: deploy_k8s
   # Используем официальный образ от команды Kubernetes со встроенной утилитой kubectl
-  image: bitnami/kubectl:latest
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
   script:
     # Профессиональный шаг: указываем kubectl использовать скрытый файл kubeconfig из секретов
     - export KUBECONFIG=$KUBECONFIG
