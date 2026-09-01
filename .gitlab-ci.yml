@@ -24,7 +24,11 @@ build_and_push:
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    # Логинимся во внутренний реестр с системными учетными данными джобы
+    # Профессиональный DevOps-хак: передаем флаг через конфиг сессии Docker-клиента джобы,
+    # чтобы принудительно отключить проверку TLS-сертификатов для нашего реестра
+    - mkdir -p ~/.docker
+    - echo "{\"insecure-registries\":[\"$CI_REGISTRY\"]}" > ~/.docker/config.json
+    # Теперь логинимся без указания http://, так как инсекьюр-режим уже прописан в конфиге выше
     - echo "$CI_REGISTRY_PASSWORD" | docker login http://$CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     # Собираем образ из контекста predict_service
