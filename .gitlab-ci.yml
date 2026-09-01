@@ -49,6 +49,9 @@ deploy_to_cluster:
     - mv ./kubectl /usr/local/bin/kubectl
     # Декодируем строку Base64 обратно в идеальный YAML-файл прямо внутри временной папки джобы
     - echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig.yaml
+    # DevOps-практика: подменяем localhost внутри kubeconfig на IP-шлюз Docker-моста хоста (172.18.0.1),
+    # чтобы контейнер джобы мог достучаться до API Kubernetes через сеть сервера
+    - sed -i 's/127.0.0.1/172.18.0.1/g' ./kubeconfig.yaml
     - export KUBECONFIG=./kubeconfig.yaml
     - echo "Авторизация в кластере KinD прошла успешно! Начинаем деплой манифестов..."
     # Последовательно раскатываем всю нашу архитектуру одной командой
