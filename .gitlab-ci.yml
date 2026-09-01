@@ -40,12 +40,11 @@ build_local:
 deploy_to_cluster:
   stage: deploy_k8s
   # Используем официальный образ от команды Kubernetes со встроенной утилитой kubectl
-  image:
-    name: bitnami/kubectl:latest
-    entrypoint: [""]
+  image: bitnami/kubectl:latest
   script:
-    # Профессиональный шаг: указываем kubectl использовать скрытый файл kubeconfig из секретов
-    - export KUBECONFIG=$KUBECONFIG
+    # Декодируем строку Base64 обратно в идеальный YAML-файл прямо внутри временной папки джобы
+    - echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig.yaml
+    - export KUBECONFIG=./kubeconfig.yaml
     - echo "Авторизация в кластере KinD прошла успешно! Начинаем деплой манифестов..."
     # Последовательно раскатываем всю нашу архитектуру одной командой
     - kubectl apply -f deploy/rbac.yaml
