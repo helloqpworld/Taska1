@@ -3,7 +3,7 @@ stages:
   - build
 
 variables:
-  IMAGE_NAME: "10.57.198.153:5050/$CI_PROJECT_PATH/predict_service"
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE/predict_service"
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   UV_HTTP_TIMEOUT: "300"
 
@@ -14,6 +14,8 @@ run_tests:
   script:
     - uv sync --frozen
     - PYTHONPATH=predict_service uv run pytest predict_service/tests/
+  tags:
+    - docker
 
 # Стейдж сборки
 build_and_push:
@@ -30,6 +32,9 @@ build_and_push:
     # Пушим обе версии в локальный Container Registry
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
+  tags:
+    - docker
   only:
     - main
     - dev
+    - feature/server-deployment
