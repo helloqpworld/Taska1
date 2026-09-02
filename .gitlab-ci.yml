@@ -49,6 +49,7 @@ deploy_to_cluster:
     # 2. Подменяем 127.0.0.1 на внешний IP твоего сервера Contabo,
     # чтобы контейнер раннера из любой сети мог достучаться до API Kubernetes!
     - sed -i 's/127.0.0.1/169.58.244.233/g' ./kubeconfig.yaml
+    - sed -i '/current-context:/i \    openapi-validation: false' ./kubeconfig.yaml
     - export KUBECONFIG=./kubeconfig.yaml
     - echo "Авторизация по внешнему IP прошла успешно! Начинаем деплой манифестов..."
     # 3. Накатываем всю нашу архитектуру, явно скармливая файл через флаг --kubeconfig
