@@ -39,15 +39,16 @@ build_local:
 # 3. АВТОМАТИЧЕСКИЙ ДЕПЛОЙ В KUBERNETES (CD)
 deploy_to_cluster:
   stage: deploy_k8s
-  # Используем официальный образ от команды Kubernetes со встроенной утилитой kubectl
-  image:
-    name: bitnami/kubectl:latest
-    entrypoint: [""]
+  image: bitnami/kubectl:latest
   script:
-    - echo "Сетевой мост настроен! Проверяем доступ к кластеру..."
-    # DevOps-тест: проверяем, видит ли раннер наш кластер по внутреннему имени
-    - kubectl cluster-info
-    - echo "Начинаем автоматический деплой манифестов..."
+    # 1. Извлекаем наш kubeconfig из зашифрованной переменной GitLab UI в локальный файл
+    - echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig.yaml
+    # 2. Подменяем 127.0.0.1 на внешний IP твоего сервера Contabo,
+    # чтобы контейнер раннера из любой сети мог достучаться до API Kubernetes!
+    - sed -i 's/127.0.0.1/169.58.244.233/g' ./kubeconfig.yaml
+    - echo "Авторизация по внешнему IP прошла успешно! Начинаем деплой манифестов..."
+    # 3. Накатываем всю нашу архитектуру, явно скармливая файл через флаг --kubeconfig
+    # и отключая фоновую загрузку схем openapi через --validate=false
     - kubectl apply -f deploy/rbac.yaml
     - kubectl apply -f deploy/resource-quota.yaml
     - kubectl apply -f deploy/limit-range.yaml
