@@ -25,7 +25,18 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-          # НАШЕ ЗАДАНИЕ: Жесткие лимиты контейнера
+          # НАШЕ ИСПРАВЛЕНИЕ: Передаем сетевые доступы внутрь кода FastAPI!
+          env:
+            # Указываем внешний адрес MLflow сервера Contabo
+            - name: MLFLOW_TRACKING_URI
+              value: "http://169.58.244.233:5080"
+            # Указываем внешний адрес MinIO S3
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://169.58.244.233:9000"
+            - name: AWS_ACCESS_KEY_ID
+              value: "Sanya_Cool_ML_specialist"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "IOidNIODiE&g67g&%g&6" # Твой реальный пароль пользователя!
           resources:
             requests:
               # Зачем: Минимально гарантированные ресурсы, которые K8s зарезервирует на ноде под этот под
