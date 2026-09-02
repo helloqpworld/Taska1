@@ -22,7 +22,7 @@ metadata:
 spec:
   rules:
     # Зачем: перехватываем трафик, идущий на внешний IP твоего сервера Contabo
-    - host: 169.58.244.233
+    - host: predict.local
       http:
         paths:
           - path: /
