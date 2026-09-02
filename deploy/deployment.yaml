@@ -16,6 +16,8 @@ spec:
         app: fastapi-predict
     spec:
       serviceAccountName: predict-service-sa # Тот самый паспорт безопасности, что мы создали!
+      imagePullSecrets:
+        - name: gitlab-registry-credentials
       containers:
         - name: predict-container
           # Указываем путь к образу, который собрал твой Kaniko в Container Registry!

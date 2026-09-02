@@ -45,12 +45,12 @@ deploy_to_cluster:
   script:
     - kubectl cluster-info
     - echo "Авторизация прошла успешно! Начинаем деплой..."
-    - kubectl apply -f deploy/rbac.yaml --validate=false
-    - kubectl apply -f deploy/resource-quota.yaml --validate=false
-    - kubectl apply -f deploy/limit-range.yaml --validate=false
-    - kubectl apply -f deploy/deployment.yaml --validate=false
-    - kubectl apply -f deploy/service-ingress.yaml --validate=false
-    - kubectl rollout status deployment/fastapi-predict-deployment -n predict-service-ns --timeout=60s
+    - kubectl apply -f deploy/rbac.yaml #  --validate=false
+    - kubectl apply -f deploy/resource-quota.yaml # --validate=false
+    - kubectl apply -f deploy/limit-range.yaml #  --validate=false
+    - kubectl apply -f deploy/deployment.yaml #  --validate=false
+    - kubectl apply -f deploy/service-ingress.yaml #  --validate=false
+    - kubectl rollout status deployment/fastapi-predict-deployment -n predict-service-ns --timeout=180s
   tags:
     - docker
   only:
