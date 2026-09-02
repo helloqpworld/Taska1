@@ -31,10 +31,9 @@ spec:
           env:
             # Указываем внешний адрес MLflow сервера Contabo
             - name: MLFLOW_TRACKING_URI
-              value: "http://169.58.244.233:5080"
-            # Указываем внешний адрес MinIO S3
+              value: "http://172.18.0.1:5080"
             - name: MLFLOW_S3_ENDPOINT_URL
-              value: "http://169.58.244.233:9000"
+              value: "http://172.18.0.1:9000"
             - name: AWS_ACCESS_KEY_ID
               value: "Sanya_Cool_ML_specialist"
             - name: AWS_SECRET_ACCESS_KEY
