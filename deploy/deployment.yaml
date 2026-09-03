@@ -20,7 +20,7 @@ spec:
         - name: gitlab-registry-credentials
       containers:
         - name: predict-container
-          image: 172.21.0.6:5050/root/taska1/predict_service:latest
+          image: 172.18.0.1:5050/root/taska1/predict_service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
