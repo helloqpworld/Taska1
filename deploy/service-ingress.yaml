@@ -5,23 +5,21 @@ metadata:
   namespace: predict-service-ns
 spec:
   selector:
-    app: fastapi-predict # Связываем сервис с подами нашего Deployment!
+    app: fastapi-predict
   ports:
     - protocol: TCP
-      port: 8000      # Порт, который слушает сервис внутри кластера
-      targetPort: 8000 # Порт, на котором работает само приложение в Docker
+      port: 8000
+      targetPort: 8000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: fastapi-predict-ingress
   namespace: predict-service-ns
-  annotations:
-    # Важно для KinD: говорим использовать наш активированный Ingress Nginx
-    kubernetes.io/ingress.class: nginx
 spec:
+  # НАШЕ ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Официальный современный класс Ingress-контроллера!
+  ingressClassName: nginx
   rules:
-    # Зачем: перехватываем трафик, идущий на внешний IP твоего сервера Contabo
     - host: predict.local
       http:
         paths:
@@ -29,6 +27,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: fastapi-predict-service # Перенаправляем трафик на наш Service!
+                name: fastapi-predict-service
                 port:
                   number: 8000
