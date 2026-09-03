@@ -8,19 +8,17 @@ spec:
     app: fastapi-predict
   ports:
     - protocol: TCP
-      port: 8000       # Внутренний порт сервиса (FastAPI)
-      targetPort: 8000 # Порт внутри контейнера
+      port: 8000
+      targetPort: 8000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: fastapi-predict-ingress
   namespace: predict-service-ns
-  annotations:
-    # Важно для KinD: этот контроллер триггерится именно по этой аннотации!
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
+  # Современный стандарт класса Ingress
+  ingressClassName: nginx
   rules:
     - host: predict.local
       http:
@@ -31,4 +29,4 @@ spec:
               service:
                 name: fastapi-predict-service
                 port:
-                  number: 8000 # Перенаправляем трафик Ingress на порт сервиса 8000
+                  number: 8000
