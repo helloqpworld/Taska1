@@ -22,8 +22,9 @@ spec:
         - name: predict-container
           # Указываем путь к образу, который собрал твой Kaniko в Container Registry!
           # image: 172.18.0.1:5050/root/taska1/predict_service:latest
-          #image: 169.58.244.233:5050/root/taska1/predict_service:latest
-          image: gitlab.local:5050/root/taska1/predict_service:latest
+          # image: 169.58.244.233:5050/root/taska1/predict_service:latest
+          # image: gitlab.local:5050/root/taska1/predict_service:latest
+          image: 172.21.0.6:5050/root/taska1/predict_service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
