@@ -20,13 +20,13 @@ spec:
         - name: gitlab-registry-credentials
       containers:
         - name: predict-container
-          # image: 172.18.0.1:5050/root/taska1/predict_service:latest
-          # image: 169.58.244.233:5050/root/taska1/predict_service:latest
-          image: gitlab-server-gitlab-1:5050/root/taska1/predict_service:latest
+          # Фиксируем белый IP (HTTPS для него полностью отключен патчем KinD!)
+          image: 169.58.244.233:5050/root/taska1/predict_service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           env:
+            # Трафик к MLflow и S3 пускаем по внутреннему шлюзу моста
             - name: MLFLOW_TRACKING_URI
               value: "http://172.18.0.1:5080"
             - name: MLFLOW_S3_ENDPOINT_URL
