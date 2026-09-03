@@ -2,11 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fastapi-predict-deployment
-  namespace: predict-service-ns # Кладем строго в нашу песочницу
+  namespace: predict-service-ns
   labels:
     app: fastapi-predict
 spec:
-  replicas: 2 # Запустим сразу 2 копии приложения для отказоустойчивости
+  replicas: 2
   selector:
     matchLabels:
       app: fastapi-predict
@@ -15,22 +15,16 @@ spec:
       labels:
         app: fastapi-predict
     spec:
-      serviceAccountName: predict-service-sa # Тот самый паспорт безопасности, что мы создали!
+      serviceAccountName: predict-service-sa
       imagePullSecrets:
         - name: gitlab-registry-credentials
       containers:
         - name: predict-container
-          # Указываем путь к образу, который собрал твой Kaniko в Container Registry!
-          # image: 172.18.0.1:5050/root/taska1/predict_service:latest
-          # image: 169.58.244.233:5050/root/taska1/predict_service:latest
-          # image: gitlab.local:5050/root/taska1/predict_service:latest
           image: 172.21.0.6:5050/root/taska1/predict_service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-          # НАШЕ ИСПРАВЛЕНИЕ: Передаем сетевые доступы внутрь кода FastAPI!
           env:
-            # Указываем внешний адрес MLflow сервера Contabo
             - name: MLFLOW_TRACKING_URI
               value: "http://172.18.0.1:5080"
             - name: MLFLOW_S3_ENDPOINT_URL
@@ -38,14 +32,11 @@ spec:
             - name: AWS_ACCESS_KEY_ID
               value: "Sanya_Cool_ML_specialist"
             - name: AWS_SECRET_ACCESS_KEY
-              value: "IOidNIODiE&g67g&%g&6" # Твой реальный пароль пользователя!
+              value: "IOidNIODiE&g67g&%g&6"
           resources:
             requests:
-              # Зачем: Минимально гарантированные ресурсы, которые K8s зарезервирует на ноде под этот под
-              cpu: "300m"   # 0.3 ядра CPU
+              cpu: "300m"
               memory: "512Mi"
             limits:
-              # Зачем: Максимальный потолок. Если модель попытается съесть больше 1 ГБ, 
-              # K8s защитит сервер и перезапустит контейнер (OOMKilled)
-              cpu: "1"      # 1 full CPU core
+              cpu: "1"
               memory: "1Gi"
