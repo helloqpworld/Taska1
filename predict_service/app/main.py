@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 import mlflow
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -49,6 +49,35 @@ app = FastAPI(lifespan=lifespan)
 # Надежный абсолютный путь к шаблонам для Docker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
+
+# ================================================================================
+#  МЕТРИКИ И ПРОВЕРКИ СОСТОЯНИЯ ДЛЯ KUBERNETES (LIVENESS & READINESS PROBES)
+# ================================================================================
+
+@app.get("/healthz/live", status_code=status.HTTP_200_OK)
+async def liveness_check():
+    """
+    Liveness Probe: Проверяет, что сам процесс FastAPI/Uvicorn жив.
+    Если этот эндпоинт перестанет отвечать, Kubernetes принудительно перезапустит под.
+    """
+    return {"status": "alive"}
+
+
+@app.get("/healthz/ready")
+async def readiness_check(response: Response):
+    """
+    Readiness Probe: Проверяет, загрузилась ли модель в оперативную память.
+    Пока модель не загружена, эндпоинт отдает 503, и Ingress НЕ пускает трафик на этот под.
+    """
+    loaded_model = ml_models.get("predict_model")
+    if loaded_model is not None:
+        return {"status": "ready", "model": "loaded"}
+    # Если модель еще скачивается или упала с ошибкой — переводим под в режим ожидания
+    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return {"status": "not_ready", "reason": "ML model is still loading or unavailable"}
+
+# ================================================================================
 
 
 @app.get("/", response_class=HTMLResponse)

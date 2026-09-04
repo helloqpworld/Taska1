@@ -78,6 +78,20 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
+          # ДОБАВИЛИ: Проверки состояния для контроля загрузки модели и работы API!
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8000
+            initialDelaySeconds: 5  # Начинаем проверять через 5 сек после старта контейнера
+            periodSeconds: 10       # Проверяем каждые 10 секунд
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8000
+            initialDelaySeconds: 10 # Даем 10 секунд форы на старт скачивания весов из MLflow
+            periodSeconds: 5        # Проверяем часто, чтобы быстро пустить трафик при готовности
+            failureThreshold: 6     # Если модель грузится долго, даем 6 попыток (6 * 5 = 30 сек) перед паникой
           env:
             - name: MLFLOW_TRACKING_URI
               value: "http://172.18.0.1:5080"
