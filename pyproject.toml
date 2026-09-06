@@ -18,6 +18,7 @@ dependencies = [
     "scikit-learn>=1.9.0",
     "setuptools<70",
     "xgboost>=3.2.0",
+    "prometheus-fastapi-instrumentator>=6.0.0",
 ]
 
 [tool.isort]
