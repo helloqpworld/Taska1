@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, Response,
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Глобальный словарь для хранения модели в оперативной памяти (RAM)
 ml_models = {}
@@ -45,6 +46,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# ================================================================================
+#  АВТОМАТИЧЕСКИЙ СБОР БИЗНЕС-МЕТРИК (RPS, LATENCY, HTTP STATUS CODES)
+# ================================================================================
+# Эта строчка сама перехватывает все запросы, считает время инференса и статус-коды
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+# ================================================================================
 
 # Надежный абсолютный путь к шаблонам для Docker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
