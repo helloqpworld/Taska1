@@ -3,11 +3,14 @@ kind: Service
 metadata:
   name: fastapi-predict-service
   namespace: predict-service-ns
+  labels:
+    app: fastapi-predict
 spec:
   selector:
     app: fastapi-predict
   ports:
-    - protocol: TCP
+    - name: http-metrics
+      protocol: TCP
       port: 8000
       targetPort: 8000
 ---

@@ -47,12 +47,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# ================================================================================
-#  АВТОМАТИЧЕСКИЙ СБОР БИЗНЕС-МЕТРИК (RPS, LATENCY, HTTP STATUS CODES)
-# ================================================================================
-# Эта строчка сама перехватывает все запросы, считает время инференса и статус-коды
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-# ================================================================================
+from prometheus_fastapi_instrumentator import Instrumentator
+
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untargeted_http_methods=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=[".*admin.*", "/metrics"],
+    env_var_name="ENABLE_METRICS",
+)
+instrumentator.instrument(app).expose(app, endpoint="/metrics", tags=["monitoring"])
 
 # Надежный абсолютный путь к шаблонам для Docker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

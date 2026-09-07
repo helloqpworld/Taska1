@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: fastapi-predict-monitor
+  namespace: monitoring # Кладем в пространство прометеуса
+  labels:
+    release: prometheus # Этот лейбл обязателен, чтобы Prometheus Operator подхватил конфиг
+spec:
+  selector:
+    matchLabels:
+      app: fastapi-predict # Ищем наш сервис FastAPI
+  namespaceSelector:
+    matchNames:
+      - predict-service-ns # Ищем в нашей песочнице приложений
+  endpoints:
+    - port: http-metrics # Имя порта, на котором висят метрики (порт 8000)
+      path: /metrics
+      interval: 15s # Опрашивать каждые 15 секунд
