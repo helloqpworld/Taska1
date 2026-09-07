@@ -8,55 +8,39 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, Response,
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+
+# Импортируем инструменты Prometheus
+import prometheus_client
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Глобальный словарь для хранения модели в оперативной памяти (RAM)
 ml_models = {}
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Старт приложения: Загрузка модели из MLflow/MinIO...")
     try:
-        # Так как контейнер запущен в режиме network_mode: host,
-        # мы гарантированно стучимся локально на порт хоста
         mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
         model_name = "my_best_model"
         model_uri = f"models:/{model_name}@prod"
-
         mlflow.set_tracking_uri(mlflow_uri)
 
-        # Скачиваем модель в RAM строго ОДИН РАЗ при старте всего контейнера
-        # Выносим синхронную загрузку MLflow в пул потоков, чтобы не вешать Event Loop
         ml_models["predict_model"] = await run_in_threadpool(
             mlflow.pyfunc.load_model, model_uri
         )
         print("Модель успешно загружена в память и готова к работе!")
     except Exception as e:
-        # DevOps-практика: перехватываем ошибку, логируем, но НЕ тушим сервис
-        print(f"ВНИМАНИЕ: Модель '{model_name}' с алиасом '@prod' не найдена в MLflow.")
-        print(f"Детали ошибки: {e}")
-        print("Сервер FastAPI запускается в режиме ожидания модели...")
+        print(f"ВНИМАНИЕ: Модель '{model_name}' с алиасом '@prod' не найдена в MLflow. Детали: {e}")
         ml_models["predict_model"] = None
-
     yield
-
     print("Остановка приложения: Очистка ресурсов...")
     ml_models.clear()
-
-
-app = FastAPI(lifespan=lifespan)
 
 app = FastAPI(lifespan=lifespan)
 
 # ================================================================================
 #  ЯВНЫЙ СБОР И ЭКСПОРТ МЕТРИК ДЛЯ KUBERNETES (ОБХОД БЛОКИРОВКИ LIFESPAN)
 # ================================================================================
-import prometheus_client
-from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi import Response
-
-# Инициализируем инструмент (он будет только считать метрики в фоне)
 instrumentator = Instrumentator(
     should_group_status_codes=False,
     should_instrument_requests_inprogress=True,
@@ -65,74 +49,34 @@ instrumentator = Instrumentator(
 )
 instrumentator.instrument(app)
 
-# ЯВНО объявляем эндпоинт, который гарантированно увидит FastAPI и Prometheus!
 @app.get("/metrics", tags=["monitoring"])
 async def metrics_endpoint():
-    """
-    Генерирует и отдает метрики в нативном текстовом формате Prometheus.
-    """
+    """Генерирует и отдает метрики в нативном текстовом формате Prometheus."""
     return Response(
         content=prometheus_client.generate_latest(),
         media_type="text/plain; version=0.0.4; charset=utf-8"
     )
 # ================================================================================
 
-
-# Надежный абсолютный путь к шаблонам для Docker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
-
-
-# ================================================================================
-#  МЕТРИКИ И ПРОВЕРКИ СОСТОЯНИЯ ДЛЯ KUBERNETES (LIVENESS & READINESS PROBES)
-# ================================================================================
-
-@app.get("/healthz/live", status_code=status.HTTP_200_OK)
-async def liveness_check():
-    """
-    Liveness Probe: Проверяет, что сам процесс FastAPI/Uvicorn жив.
-    Если этот эндпоинт перестанет отвечать, Kubernetes принудительно перезапустит под.
-    """
-    return {"status": "alive"}
-
-
-@app.get("/healthz/ready")
-async def readiness_check(response: Response):
-    """
-    Readiness Probe: Проверяет, загрузилась ли модель в оперативную память.
-    Пока модель не загружена, эндпоинт отдает 503, и Ingress НЕ пускает трафик на этот под.
-    """
-    loaded_model = ml_models.get("predict_model")
-    if loaded_model is not None:
-        return {"status": "ready", "model": "loaded"}
-    # Если модель еще скачивается или упала с ошибкой — переводим под в режим ожидания
-    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    return {"status": "not_ready", "reason": "ML model is still loading or unavailable"}
-
-# ================================================================================
-
 
 @app.get("/", response_class=HTMLResponse)
 async def main_page(request: Request):
     return templates.TemplateResponse(request, "index.html", {"request": request})
 
-
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     filename_lower = file.filename.lower()
     if not (filename_lower.endswith(".csv") or filename_lower.endswith(".parquet")):
-        raise HTTPException(
-            status_code=400, detail="Допускаются только файлы .csv и .parquet"
-        )
+        raise HTTPException(status_code=400, detail="Допускаются только файлы .csv и .parquet")
 
     contents = await file.read()
-
     loaded_model = ml_models.get("predict_model")
-    # Меняем код с 500 на 503, так как это штатная ситуация временного отсутствия модели
     if not loaded_model:
         raise HTTPException(
             status_code=503,
-            detail="Сервис временно недоступен: ML-модель еще не обучена или не зарегистрирована в MLflow.",
+            detail="Сервис временно недоступен: ML-модель еще не обучена или не зарегистрирована.",
         )
 
     try:
@@ -146,9 +90,7 @@ async def predict(file: UploadFile = File(...)):
     try:
         predictions = await run_in_threadpool(loaded_model.predict, df)
     except Exception as e:
-        raise HTTPException(
-            status_code=422, detail=f"Ошибка при предсказании модели: {e}"
-        )
+        raise HTTPException(status_code=422, detail=f"Ошибка при предсказании модели: {e}")
 
     df["prediction"] = predictions
 
@@ -164,7 +106,5 @@ async def predict(file: UploadFile = File(...)):
         return_content = stream.getvalue()
 
     response = StreamingResponse(iter([return_content]), media_type=media_type)
-    response.headers["Content-Disposition"] = (
-        f"attachment; filename=predictions_{file.filename}"
-    )
+    response.headers["Content-Disposition"] = f"attachment; filename=predictions_{file.filename}"
     return response
