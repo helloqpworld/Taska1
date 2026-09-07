@@ -51,7 +51,6 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 instrumentator = Instrumentator(
     should_group_status_codes=False,
-    should_ignore_untargeted_http_methods=True,
     should_instrument_requests_inprogress=True,
     excluded_handlers=[".*admin.*", "/metrics"],
     env_var_name="ENABLE_METRICS",
