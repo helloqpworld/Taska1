@@ -47,15 +47,36 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-from prometheus_fastapi_instrumentator import Instrumentator
+app = FastAPI(lifespan=lifespan)
 
+# ================================================================================
+#  ЯВНЫЙ СБОР И ЭКСПОРТ МЕТРИК ДЛЯ KUBERNETES (ОБХОД БЛОКИРОВКИ LIFESPAN)
+# ================================================================================
+import prometheus_client
+from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi import Response
+
+# Инициализируем инструмент (он будет только считать метрики в фоне)
 instrumentator = Instrumentator(
     should_group_status_codes=False,
     should_instrument_requests_inprogress=True,
     excluded_handlers=[".*admin.*", "/metrics"],
     env_var_name="ENABLE_METRICS",
 )
-instrumentator.instrument(app).expose(app, endpoint="/metrics", tags=["monitoring"])
+instrumentator.instrument(app)
+
+# ЯВНО объявляем эндпоинт, который гарантированно увидит FastAPI и Prometheus!
+@app.get("/metrics", tags=["monitoring"])
+async def metrics_endpoint():
+    """
+    Генерирует и отдает метрики в нативном текстовом формате Prometheus.
+    """
+    return Response(
+        content=prometheus_client.generate_latest(),
+        media_type="text/plain; version=0.0.4; charset=utf-8"
+    )
+# ================================================================================
+
 
 # Надежный абсолютный путь к шаблонам для Docker
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
