@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-predict-shadow
+  namespace: predict-service-ns
+  labels:
+    app: fastapi-predict-shadow
+    role: shadow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fastapi-predict-shadow
+  template:
+    metadata:
+      labels:
+        app: fastapi-predict-shadow
+    spec:
+      containers:
+      - name: predict-container
+        image: 172.21.0.6:5050/root/taska1/predict_service:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "http://172.18.0.1:5080"
+        # Инструкция для FastAPI: скачивать из MLflow модель с алиасом Ready_for_staging
+        - name: MLFLOW_MODEL_ALIAS
+          value: "Ready_for_staging"
+        ports:
+        - containerPort: 8000

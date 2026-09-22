@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y libgomp1 curl && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir pandas numpy lightgbm mlflow feast pyarrow boto3 dask
+COPY scripts/retrain.py /app/retrain.py
+COPY feature_store /app/feature_store
+COPY data/processed/train_processed_2.parquet /app/train_processed_2.parquet
+RUN mkdir -p /home/alex/projects/ml-project/data/processed && \
+    ln -s /app/train_processed_2.parquet /home/alex/projects/ml-project/data/processed/train_processed_2.parquet
+ENV FEAST_USAGE=False
+ENTRYPOINT ["python", "/app/retrain.py"]

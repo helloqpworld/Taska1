@@ -4,7 +4,7 @@ metadata:
   name: fastapi-predict-monitor
   namespace: monitoring # Кладем в пространство прометеуса
   labels:
-    release: prometheus # Этот лейбл обязателен, чтобы Prometheus Operator подхватил конфиг
+    release: prometheus-stack # Этот лейбл обязателен, чтобы Prometheus Operator подхватил конфиг
 spec:
   selector:
     matchLabels:

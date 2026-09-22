@@ -49,6 +49,10 @@ instrumentator = Instrumentator(
 )
 instrumentator.instrument(app)
 
+ML_DRIFT_COUNT = prometheus_client.Gauge('ml_drifted_features_count', 'Количество фичей с обнаруженным дрифтом')
+ML_DRIFT_SHARE = prometheus_client.Gauge('ml_drifted_features_share', 'Доля фичей с дрифтом от общего числа')
+ML_DATASET_DRIFT = prometheus_client.Gauge('ml_dataset_drift_alert', 'Флаг критического сдвига всего датасета (0 или 1)')
+
 @app.get("/metrics", tags=["monitoring"])
 async def metrics_endpoint():
     """Генерирует и отдает метрики в нативном текстовом формате Prometheus."""
@@ -56,6 +60,14 @@ async def metrics_endpoint():
         content=prometheus_client.generate_latest(),
         media_type="text/plain; version=0.0.4; charset=utf-8"
     )
+
+@app.post("/internal/drift-report", tags=["monitoring"])
+async def receive_drift_report(data: dict):
+    """Принимает метрики дрифта от скрипта детектора и обновляет их в Prometheus."""
+    ML_DRIFT_COUNT.set(data.get("number_of_drifted_features", 0))
+    ML_DRIFT_SHARE.set(data.get("share_of_drifted_features", 0.0))
+    ML_DATASET_DRIFT.set(1 if data.get("dataset_drift", False) else 0)
+    return {"status": "success", "message": "ML metrics updated successfully"}
 # ================================================================================
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
