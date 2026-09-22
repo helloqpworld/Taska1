@@ -1,14 +1,30 @@
+# === Системное окружение и настройки IDE ===
 .env
 .venv
 .vscode
-data/*
-!data/**/.gitignore
-!data/**/*.dvc
-.dvc/cache/
 __pycache__/
 *.py[cod]
+*.pyc
+.pytest_cache/
+*.log
+
+# === Инфраструктурные локальные данные ===
 mlruns/
 .mlflow/
 minio.license
 minio_data/
 
+# === Хранилище данных и DVC-интеграция ===
+.dvc/cache/
+data/*
+!data/**/.gitignore
+!data/**/*.dvc
+
+# === Feast Feature Store (Игнорируем бинарные базы, храним код фичей) ===
+feature_store/data/
+
+# === Бэкапы кода, отладка и временные файлы стажировки ===
+*.old
+scripts/*_old.py
+scripts/test_tg.py
+Dockerfile.retrain.old
