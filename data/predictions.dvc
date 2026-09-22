@@ -1,0 +1,6 @@
+outs:
+- md5: 6a2a41c581c14f46a013cc8740f458a7.dir
+  size: 28332844
+  nfiles: 8
+  hash: md5
+  path: predictions
