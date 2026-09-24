@@ -129,7 +129,7 @@ with mlflow.start_run() as run:
     # --------------------------------------------------------------------------------
     print(f"⚔️ Итог дуэли: Challenger RMSE ({challenger_rmse:.4f}) vs Champion RMSE ({champion_rmse:.4f})")
     
-    if challenger_rmse <= champion_rmse:
+    if challenger_rmse < champion_rmse:
         print("🔥 ПУШ НА СТЭЙДЖ: Новая модель готова к теневому тестированию!")
         
         # ГАРАНТИЯ БЕЗОПАСНОСТИ ДЛЯ POSTGRES: Сначала жестко стираем старый алиас "Ready_for_staging", если он был
