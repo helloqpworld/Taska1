@@ -31,7 +31,7 @@ default_args = {
 @dag(
     dag_id='ml_data_drift_sensor_pipeline',
     default_args=default_args,
-    schedule='0 */3 * * *', 
+    schedule='0 */12 * * *', 
     catchup=False,
     tags=['monitoring', 'mlops', 'continuous-training', 'canary-rollback'],
     params={

@@ -84,10 +84,10 @@ try:
     # СТРОГО ПО ДОКУМЕНТАЦИИ: Метод извлечения версии по алиасу
     prod_model_run = client.get_model_version_by_alias(MODEL_NAME, "prod")
     champion_version = prod_model_run.version
-    
+
     champion_model_uri = f"models:/{MODEL_NAME}/{champion_version}"
     champion_model = mlflow.lightgbm.load_model(champion_model_uri)
-    
+
     champion_preds = champion_model.predict(X_val)
     champion_rmse = root_mean_squared_error(y_val, champion_preds)
     print(f"📊 Текущий Champion (v{champion_version}) на валидации показал RMSE: {champion_rmse:.4f}")
@@ -109,13 +109,13 @@ params = {
 
 with mlflow.start_run() as run:
     challenger_model = lgb.train(params, train_dataset, num_boost_round=50)
-    
+
     challenger_preds = challenger_model.predict(X_val)
     challenger_rmse = root_mean_squared_error(y_val, challenger_preds)
     print(f"📊 Новая модель-Challenger показала RMSE: {challenger_rmse:.4f}")
-    
+
     mlflow.log_metric("val_rmse", challenger_rmse)
-    
+
     model_info = mlflow.lightgbm.log_model(
         lgb_model=challenger_model,
         artifact_path="model",
@@ -128,20 +128,20 @@ with mlflow.start_run() as run:
     # ЭТАП 3: РЫЦАРСКИЙ ТУРНИР (CHAMPION VS CHALLENGER) С ДВУХШАГОВОЙ ПЕРЕЗАПИСЬЮ АЛИАСА
     # --------------------------------------------------------------------------------
     print(f"⚔️ Итог дуэли: Challenger RMSE ({challenger_rmse:.4f}) vs Champion RMSE ({champion_rmse:.4f})")
-    
+
     if challenger_rmse < champion_rmse:
         print("🔥 ПУШ НА СТЭЙДЖ: Новая модель готова к теневому тестированию!")
-        
+
         # ГАРАНТИЯ БЕЗОПАСНОСТИ ДЛЯ POSTGRES: Сначала жестко стираем старый алиас "Ready_for_staging", если он был
         try:
             client.delete_registered_model_alias(MODEL_NAME, "Ready_for_staging")
             print("🧹 Старый алиас Ready_for_staging успешно удален из Model Registry.")
         except Exception:
             pass
-            
+
         # Теперь со 100% чистой базой вешаем алиас на новую версию по канону документации
         client.set_registered_model_alias(MODEL_NAME, "Ready_for_staging", str(challenger_version))
-        
+
         message_template = (
             "⚔️ <b>Результаты турнира Champion vs Challenger</b> ⚔️\n\n"
             "🟢 <b>Итог:</b> <code>НОВАЯ МОДЕЛЬ ПОБЕДИЛА!</code>\n"
