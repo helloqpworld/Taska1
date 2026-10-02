@@ -5,8 +5,8 @@ import subprocess
 from botocore.client import Config
 from airflow.decorators import dag, task
 from airflow.models.param import Param
+from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
-from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.exceptions import AirflowFailException
 from kubernetes.client import models as k8s
 
@@ -109,8 +109,11 @@ def drift_sensor_dag():
         log_events_on_failure=True
     )
 
-    wait_for_engineer_approval = EmptyOperator(
-        task_id="wait_for_engineer_approval"
+    wait_for_engineer_approval = PythonSensor(
+        task_id="wait_for_engineer_approval",
+        python_callable=lambda: True, # Вечный тормоз: всегда возвращает False
+        poke_interval=3600,            # Мягко проверяет статус раз в минуту
+        mode="reschedule"              # Полностью освобождает RAM воркера на время паузы
     )
 
     @task()
