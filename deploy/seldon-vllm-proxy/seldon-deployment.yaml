@@ -1,0 +1,39 @@
+apiVersion: machinelearning.seldon.io/v1
+kind: SeldonDeployment
+metadata:
+  name: vllm-gpu-inference
+  namespace: default # Можно изменить на predict-service-ns, если хочешь держать всё в одном неймспейсе
+spec:
+  name: vllm-deployment
+  predictors:
+  - componentSpecs:
+    - spec:
+        containers:
+        - name: vllm-proxy
+          image: seldon-vllm-proxy:latest
+          imagePullPolicy: Never # КРИТИЧНО: используем локальный образ, загруженный через kind load
+          env:
+          - name: VLLM_ENDPOINT
+            value: "http://172.17.0.1:8081" # Наш проверенный SSH-туннель к GPU
+          - name: VLLM_MODEL
+            value: "Qwen/Qwen2.5-0.5B-Instruct"
+          ports:
+          - containerPort: 9000
+            name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+    graph:
+      children: []
+      name: vllm-proxy
+      type: MODEL
+      endpoint:
+        type: REST
+        service_port: 9000
+    name: gpu-predictor
+    replicas: 1
+    traffic: 100
