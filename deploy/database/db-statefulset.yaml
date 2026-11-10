@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  namespace: postgres-namespace
+  labels:
+    app: db-label
+spec:
+  serviceName: "db-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: postgres
+        image: postgres:17-alpine
+        env:
+        - name: POSTGRES_PASSWORD
+          value: "mysecretpassword" # Лучше использовать Secret
+        ports:
+        - containerPort: 5432
+          name: dbport
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates: # Автоматически создает PersistentVolumeClaim для каждого пода
+  - metadata:
+      name: db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard" # Стандартный класс в Kind, который использует локальный хост-путь внутри ноды
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-service
+spec:
+  clusterIP: None # Headless-сервис, обязательный для StatefulSet
+  selector:
+    app: database
+  ports:
+  - port: 5432
+    targetPort: dbport
