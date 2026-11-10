@@ -43,6 +43,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: db-service
+  namespace: postgres-namespace
 spec:
   clusterIP: None # Headless-сервис, обязательный для StatefulSet
   selector:
