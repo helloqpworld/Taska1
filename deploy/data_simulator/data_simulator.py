@@ -295,11 +295,9 @@ def main() -> None:
             "Подключение к БД установлено, генерация запущена (остановка — Ctrl+C)"
         )
         while True:
-            size = max(
-                1, int(rng.exponential(222))
-            )  # размер батча, в среднем ~222 строки
+            size = max(1, int(rng.exponential(14)))
             save_to_postgres(conn, generate_dataframe(size, rng))
-            time.sleep(rng.exponential(4))  # пауза между батчами, в среднем ~4 с
+            time.sleep(rng.exponential(7 * 3600))  # пауза между батчами, в среднем ~4 с
 
 
 def _sigterm(signum, frame):

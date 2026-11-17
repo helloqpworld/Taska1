@@ -28,7 +28,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: trip-generator
-          image: 169.58.244.233:5050/root/taska1/trip-generator:1.0.2
+          image: 169.58.244.233:5050/root/taska1/trip-generator:1.0.3
           imagePullPolicy: IfNotPresent
           env:
             - name: DB_HOST
