@@ -1,0 +1,41 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-generator-metrics
+  namespace: data-generate-ns
+  labels:
+    app: trip-generator
+spec:
+  selector:
+    app: trip-generator
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: trip-generator
+  namespace: monitoring  # Перемещаем в namespace monitoring, чтобы Prometheus точно увидел
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: trip-generator
+  namespaceSelector:
+    matchNames:
+      - data-generate-ns
+  endpoints:
+    - port: metrics
+      interval: 1h        # <-- Скрейпинг раз в час вместо 30 секунд
+      path: /metrics
+      scrapeTimeout: 10s  # Таймаут на случай, если под "проснулся" и еще не готов
+
+# Helm-чарт kube-prometheus-stack по умолчанию ищет ServiceMonitor
+# только в своем namespace (monitoring).
+# Если оставить data-generate-ns, Prometheus может не увидеть этот ресурс.
+# namespaceSelector при этом указывает, в каком namespace искать сам Service (то есть под)

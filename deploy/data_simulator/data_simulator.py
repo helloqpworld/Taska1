@@ -1,12 +1,12 @@
-"""Симулятор потока поездок: генерация синтетических данных и запись в PostgreSQL.
+"""
+Симулятор потока поездок: генерация синтетических данных и запись в PostgreSQL.
 
-Батчи случайного размера (в среднем ~222 строки) генерируются со случайными
-паузами (в среднем ~4 с) и записываются в таблицу trip_statistics через COPY.
-Остановка — Ctrl+C; при ошибке БД скрипт завершается с кодом 1 (fail fast,
-перезапуск — на стороне оркестратора: Airflow / systemd / k8s).
+Батчи случайного размера (в среднем 14 строк).
+Генерируются со случайными паузами (в среднем 7 часов).
+Записываются в таблицу trip_statistics через COPY.
 
-Зависимости: numpy, pandas, psycopg2-binary, python-dotenv
-Переменные окружения (.env): DB_HOST, DB_PORT, DB_USER, DB_PASSWORD (обязательна), DB_NAME
+Зависимости: numpy, pandas, psycopg2-binary, python-dotenv, prometheus-client
+Переменные окружения (.env): DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 """
 
 from __future__ import annotations
@@ -17,17 +17,31 @@ import os
 import signal
 import time
 from contextlib import closing
-from typing import Callable, Sequence
 
 import numpy as np
 import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
+from prometheus_client import Gauge, start_http_server
 from psycopg2 import sql
 
 logger = logging.getLogger(__name__)
 
 TABLE_NAME = "trip_statistics"
+
+# --- Метрики Prometheus ---
+# 1. Общее количество строк в таблице (обновляется после каждой вставки)
+TOTAL_DB_ROWS = Gauge(
+    "trip_generator_total_db_rows", "Всего строк в таблице trip_statistics"
+)
+# 2. Размер последнего сгенерированного батча (количество строк)
+LAST_BATCH_SIZE = Gauge(
+    "trip_generator_last_batch_size", "Строк в последнем сгенерированном батче"
+)
+# 3. Время ожидания до следующей генерации (в часах)
+NEXT_SLEEP_HOURS = Gauge(
+    "trip_generator_next_sleep_hours", "Часов до следующей генерации данных"
+)
 
 _INTERACTION_CATEGORIES = np.array(
     [
@@ -243,15 +257,26 @@ def _connect() -> psycopg2.extensions.connection:
     """Подключение к PostgreSQL по переменным окружения (fail fast при отсутствии пароля)."""
     password = os.getenv("DB_PASSWORD")
     if not password:
-        raise RuntimeError("DB_PASSWORD не задана: укажите её в окружении или .env")
+        raise RuntimeError("DB_PASSWORD не задана")
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "airflow-postgresql.airflow.svc.cluster.local"),
+        host=os.getenv(
+            "DB_HOST", "db-0.db-service.postgres-namespace.svc.cluster.local"
+        ),
         port=int(os.getenv("DB_PORT", "5432")),
         user=os.getenv("DB_USER", "postgres"),
         password=password,
         dbname=os.getenv("DB_NAME", "postgres"),
         connect_timeout=10,
     )
+
+
+def get_total_rows(conn: psycopg2.extensions.connection) -> int:
+    """Возвращает точное количество строк через COUNT(*)."""
+    with conn.cursor() as cursor:
+        # Используем sql.Identifier для безопасного экранирования имени таблицы
+        query = sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(TABLE_NAME))
+        cursor.execute(query)
+        return cursor.fetchone()[0]
 
 
 def save_to_postgres(conn: psycopg2.extensions.connection, df: pd.DataFrame) -> None:
@@ -267,7 +292,6 @@ def save_to_postgres(conn: psycopg2.extensions.connection, df: pd.DataFrame) -> 
     buffer = io.StringIO()
     df.to_csv(buffer, index=False, header=False, sep="\t")
     buffer.seek(0)
-
     # sql.Identifier корректно экранирует имена таблицы и колонок.
     query = sql.SQL(
         r"COPY {} ({}) FROM STDIN WITH (FORMAT csv, DELIMITER E'\t')"
@@ -276,11 +300,14 @@ def save_to_postgres(conn: psycopg2.extensions.connection, df: pd.DataFrame) -> 
         sql.SQL(", ").join(map(sql.Identifier, df.columns)),
     )
 
-    with conn:
+    with conn:  # Автоматический commit/rollback
         with conn.cursor() as cursor:
             cursor.copy_expert(query.as_string(conn), buffer)
+    logger.info("✅ В таблицу %s записано %d строк", TABLE_NAME, len(df))
 
-    logger.info("В таблицу %s записано %d строк", TABLE_NAME, len(df))
+
+def _sigterm(signum, frame):
+    raise KeyboardInterrupt
 
 
 def main() -> None:
@@ -290,26 +317,65 @@ def main() -> None:
     )
     rng = np.random.default_rng()
 
-    with closing(_connect()) as conn:
-        logger.info(
-            "Подключение к БД установлено, генерация запущена (остановка — Ctrl+C)"
-        )
-        while True:
-            size = max(1, int(rng.exponential(14)))
-            save_to_postgres(conn, generate_dataframe(size, rng))
-            time.sleep(rng.exponential(7 * 3600))  # пауза между батчами, в среднем ~4 с
+    # Запускаем HTTP-сервер для Prometheus на порту 9090
+    start_http_server(9090)
+    logger.info("Сервер метрик запущен на порту 9090")
 
+    signal.signal(signal.SIGTERM, _sigterm)
 
-def _sigterm(signum, frame):
-    raise KeyboardInterrupt
+    while True:
+        conn = None
+        try:
+            # 1. Подключаемся
+            logger.info("Подключение к БД ...")
+            conn = _connect()
+            logger.info("Подключение к БД успешно")
+
+            # 2. Генерируем размер батча (с защитой от OOM)
+            size = min(50000, max(1, int(rng.exponential(14))))
+            LAST_BATCH_SIZE.set(size)  # <-- Обновляем метрику размера батча
+            logger.info(f"Генерация {size} строк ...")
+
+            df = generate_dataframe(size, rng)
+
+            # 3. Сохраняем в БД
+            logger.info("Сохранение в БД ...")
+            save_to_postgres(conn, df)
+
+            # 4. Считаем строки и обновляем метрику
+            total = get_total_rows(conn)
+            TOTAL_DB_ROWS.set(total)
+            logger.info(f"Всего строк в БД: {total}")
+
+        except psycopg2.OperationalError as e:
+            logger.error(f"Ошибка соединения с БД: {e}")
+        except KeyboardInterrupt:
+            logger.info("Остановлено пользователем (SIGTERM/SIGINT)")
+            break
+        except Exception:
+            logger.exception("Критический сбой в цикле")
+            break
+        finally:
+            # 5. Гарантированно закрываем соединение
+            if conn is not None:
+                try:
+                    conn.close()
+                    logger.info("Соединение с БД закрыто")
+                except Exception:
+                    pass
+
+        # 6. Вычисляем время сна и обновляем метрику
+        sleep_in_hours = round(np.random.exponential(7), 0)
+        sleep_in_sec = sleep_in_hours * 3600
+        NEXT_SLEEP_HOURS.set(sleep_in_hours)  # <-- Обновляем метрику времени сна
+
+        logger.info(f"Сон на {sleep_in_hours} часов\n")
+        time.sleep(sleep_in_sec)
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, _sigterm)  # docker stop / k8s -> штатная остановка
     try:
         main()
-    except KeyboardInterrupt:
-        logger.info("Остановлено пользователем")
     except Exception:
-        logger.exception("Критический сбой")
+        logger.exception("Фатальная ошибка")
         raise SystemExit(1)
