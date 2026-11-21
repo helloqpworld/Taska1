@@ -31,9 +31,8 @@ spec:
       - data-generate-ns
   endpoints:
     - port: metrics
-      interval: 1h        # <-- Скрейпинг раз в час вместо 30 секунд
+      interval: 1h # <-- Скрейпинг раз в час
       path: /metrics
-      scrapeTimeout: 10s  # Таймаут на случай, если под "проснулся" и еще не готов
 
 # Helm-чарт kube-prometheus-stack по умолчанию ищет ServiceMonitor
 # только в своем namespace (monitoring).
