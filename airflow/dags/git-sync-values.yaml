@@ -1,9 +1,4 @@
-# git-sync-values.yaml
-dags:
-  persistence:
-    enabled: false
-  configMap:
-    name: ""
+sdags:
   gitSync:
     enabled: true
     repo: http://169.58.244.233:8929/root/airflow-dags-taska1.git
