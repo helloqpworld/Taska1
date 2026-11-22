@@ -1,18 +1,12 @@
 # git-sync-values.yaml
 dags:
-  # Явно отключаем любые configMap или persistence, если они были
   persistence:
     enabled: false
-
-  # Включаем и настраиваем git-sync
+  configMap:
+    name: ""
   gitSync:
     enabled: true
-    # Ссылка на НОВЫЙ отдельный репозиторий
     repo: http://169.58.244.233:8929/root/airflow-dags-taska1.git
     branch: main
-    depth: 1  # Скачивать только последний коммит (экономит место и время)
-    wait: 30  # Проверять обновления в GitLab каждые 30 секунд
-
-    # ВАЖНО: Если репозиторий Private или Internal, раскомментируйте и настройте это:
-    # repoSubPath: ""
-    # httpSecret: airflow-git-credentials  # Имя секрета (создается ниже)
+    depth: 1
+    wait: 30
