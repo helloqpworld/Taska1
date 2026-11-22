@@ -1,4 +1,6 @@
 dags:
+  persistence:
+    enabled: false
   gitSync:
     enabled: true
     repo: http://169.58.244.233:8929/root/airflow-dags-taska1.git
