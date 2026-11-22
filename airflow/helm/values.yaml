@@ -1,0 +1,29 @@
+executor: LocalExecutor
+pgbouncer:
+  enabled: false
+redis:
+  enabled: false
+stats:
+  enabled: false
+triggerer:
+  enabled: false
+
+createUserJob:
+  defaultUser:
+    username: admin
+    password: admin_pass_airflow
+    firstName: Admin
+    lastName: User
+    role: Admin
+    email: admin@example.com
+
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: true
+    repo: http://169.58.244.233:8929/root/airflow-dags-taska1.git
+    branch: main
+    depth: 1
+    wait: 30
+    subPath: ""
