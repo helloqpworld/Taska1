@@ -7,4 +7,4 @@ dags:
     branch: main
     depth: 1
     wait: 30
-    repoSubPath: "repo"
+    subPath: ""
